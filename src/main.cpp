@@ -1,5 +1,6 @@
+#include <Arduino.h>
 #include <WiFi.h>
-#include motors
+#include "pendulum.hpp"
 
 // Replace with your network credentials
 const char* ssid     = "pendulum";
@@ -15,26 +16,6 @@ String PWMState = "off";
 const int Dir = 22;
 const int PWM = 21;
 
-const int mot_1_D = 22;
-const int mot_1_E = 33;
-const int mot_1_PWM = 21;
-const int mot_2_D = 19;
-const int mot_2_E = 32;
-const int mot_2_PWM = 18;
-const int mot_3_D = 16;
-const int mot_3_E = 26;
-const int mot_3_PWM = 4;
-const int mot_4_D = 5;
-const int mot_4_E = 17;
-const int mot_4_PWM = 27;
-
-int pull_T[4], pull_F[4], hold_T[4], hold_F[4], rew_T[4], rew_F[4];
-byte start_test[4];
-
-const int freq = 20000;
-const int ledchannel14 = 0;
-const int ledchannel15 = 1;
-const int resolution = 8;
 
 IPAddress local_IP(192, 168, 0, 1);
 IPAddress gateway(192, 168, 0, 1);
