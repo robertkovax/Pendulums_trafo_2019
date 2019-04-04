@@ -1,0 +1,1 @@
+void setMotor(unsigned char i, bool dir, float power);
