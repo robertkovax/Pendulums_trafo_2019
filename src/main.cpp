@@ -1,147 +1,217 @@
-#include <Arduino.h>
+// Load Wi-Fi library
 #include <WiFi.h>
-#include "pendulum.hpp"
+#include <control.cpp>
+#include <Arduino.h>
 
 // Replace with your network credentials
-const char* ssid     = "pendulum";
-const char* password = "123456789";
+const char *ssid = "ROBERT_X250";
+const char *password = "11221122";
+// const char* ssid     = "soda_and_code";
+// const char* password = "5GmO2vpSVau8";
 
+// Set web server port number to 80
 WiFiServer server(80);
 
+// Variable to store the HTTP request
 String header;
+String strParam;
 
-String DirState = "off";
-String PWMState = "off";
-
-const int Dir = 22;
-const int PWM = 21;
-
-
-IPAddress local_IP(192, 168, 0, 1);
-IPAddress gateway(192, 168, 0, 1);
+// Set your Static IP address
+IPAddress local_IP(192, 168, 137, 157);
+IPAddress gateway(192, 168, 137, 1);
 IPAddress subnet(255, 255, 255, 0);
+// IPAddress local_IP(192, 168, 220, 122);
+// IPAddress gateway(192, 168, 222, 254);
+// IPAddress subnet(255, 255, 0, 0);
 
-int value = 255;
-String strValue = "";
 
-void setup() {
-  Serial.begin(9600);
-  
-  // led pwm setup
-  ledcSetup(ledchannel14, freq, resolution);
-  ledcSetup(ledchannel15, freq, resolution);
+// driver parameters
+const int DRVNR = 4;
+int drv_period_t[DRVNR] = {0, 0, 0, 0};
+int drv_pull_t[DRVNR] = {0, 0, 0, 0};
+int drv_pull_f[DRVNR] = {0, 0, 0, 0};
+int drv_hold_t[DRVNR] = {0, 0, 0, 0};
+int drv_hold_f[DRVNR] = {0, 0, 0, 0};
+int drv_rew_t[DRVNR] = {0, 0, 0, 0};
+int drv_rew_f[DRVNR] = {0, 0, 0, 0};
 
-  ledcAttachPin(Dir, ledchannel14);
-  ledcAttachPin(PWM, ledchannel15);
+int drv_start[DRVNR] = {0, 0, 0, 0};
 
-  // network config
-  if (!WiFi.config(local_IP, gateway, subnet)) {
-    Serial.println("STA Failed to configure");
-  }
-  
+Control control = Control();
+
+void setup()
+{
+  // serial console
+  Serial.begin(115200);
+
     // Connect to Wi-Fi network with SSID and password
-  Serial.print("Setting AP (Access Point)…");
-  // Remove the password parameter, if you want the AP (Access Point) to be open
-  WiFi.softAP(ssid, password);
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
 
-  IPAddress IP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(IP);
-  
+  // set IP address
+  //if (!WiFi.config(local_IP, gateway, subnet))
+  {
+  //  Serial.println("STA Failed to configure");
+  }
+
+  // Print local IP address and start web server
+  Serial.println("");
+  Serial.println("WiFi connected.");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
   server.begin();
 }
 
-void loop(){
+String arr_to_str(int *arr)
+{
+  String res = "";
 
+  for (int i = 0; i < DRVNR; i++)
+  {
+    res += String(arr[i]);
+    if (i < DRVNR - 1)
+      res += ",";
+  }
 
+  return res;
+}
 
+void set_param(int *arr, String param)
+{
+  for (int i = 0; i < DRVNR; i++)
+  {
+    arr[i] = param.toInt();
+    int idx = param.indexOf(",");
+    if (idx > 0)
+      param = param.substring(idx + 1);
+  }
+}
 
+String get_param_from_header(String hdr, String path)
+{
+  String strP = "";
+  int plen = path.length();
+  if (hdr.indexOf("GET " + path) >= 0)
+  {
+    int getIndex = hdr.indexOf("GET " + path);
+    int getEndIndex = hdr.indexOf(" HTTP", getIndex);
+    strP = hdr.substring(getIndex + 4 + plen, getEndIndex);
+  }
+  return strP;
+}
 
+void loop()
+{
   WiFiClient client = server.available();
 
-  if (client) {
+  //control.tick();
+
+  if (client)
+  {
     Serial.println("New Client.");
     String currentLine = "";
-    while (client.connected()) {
-      if (client.available()) {
+    while (client.connected())
+    {
+      if (client.available())
+      {
         char c = client.read();
-        Serial.write(c);
+        // Serial.write(c);
         header += c;
-        if (c == '\n') {
-          if (currentLine.length() == 0) {
+        if (c == '\n')
+        {
+          // \n\n means end of request header, send response
+          if (currentLine.length() == 0)
+          {
+            // send headers
             client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:text/html");
+            client.println("Content-type: application/json");
+            client.println("Access-Control-Allow-Origin: *"); // CORS
             client.println("Connection: close");
             client.println();
-            
-            if (header.indexOf("GET /14/on") >= 0) {
-              Serial.println("GPIO 14 on");
-              DirState = "on";
-              ledcWrite(ledchannel14, value);
-            } else if (header.indexOf("GET /14/off") >= 0) {
-              Serial.println("GPIO 14 off");
-              DirState = "off";
-              ledcWrite(ledchannel14, 0);
-            } else if (header.indexOf("GET /15/on") >= 0) {
-              Serial.println("GPIO 15 on");
-              PWMState = "on";
-              ledcWrite(ledchannel15, value);
-            } else if (header.indexOf("GET /15/off") >= 0) {
-              Serial.println("GPIO 15 off");
-              PWMState = "off";
-              ledcWrite(ledchannel15, 0);
-            } else if (header.indexOf("GET /setValue/") >= 0) {
-              int getIndex = header.indexOf("GET /setValue/");
-              int getEndIndex = header.indexOf(" HTTP", getIndex);
-              strValue = header.substring(getIndex + 14, getEndIndex);
-              value = strValue.toInt();
-              if (value > 255) value = 255;
-              if (value < 0) value = 0;
-              if (DirState == "on") ledcWrite(ledchannel14, 255);
-              if (PWMState == "on") ledcWrite(ledchannel15, value);
-            }
-            
-            client.println("<!DOCTYPE html><html>");
-            client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-            client.println("<link rel=\"icon\" href=\"data:,\">");
-            client.println("<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}");
-            client.println(".button { background-color: #4CAF50; border: none; color: white; padding: 16px 40px;");
-            client.println("text-decoration: none; font-size: 30px; margin: 2px; cursor: pointer;}");
-            client.println(".button2 {background-color: #555555;}</style></head>");
-            
-            client.println("<body><h1>ESP32 Web Server</h1>");
 
-            client.print("<p>Value: ");
-            client.print(value);
-            client.println("</p>");
-            
-            client.println("<p>Dir - State " + DirState + "</p>");
-            if (DirState=="off") {
-              client.println("<p><a href=\"/14/on\"><button class=\"button\">ON</button></a></p>");
-            } else {
-              client.println("<p><a href=\"/14/off\"><button class=\"button button2\">OFF</button></a></p>");
-            } 
-               
-            client.println("<p>PWM - State " + PWMState + "</p>");
-            if (PWMState=="off") {
-              client.println("<p><a href=\"/15/on\"><button class=\"button\">ON</button></a></p>");
-            } else {
-              client.println("<p><a href=\"/15/off\"><button class=\"button button2\">OFF</button></a></p>");
-            }
-            client.println("</body></html>");
-            
+            // set parameters
+            strParam = get_param_from_header(header, "/set/period_t/");
+            if (strParam != "")
+              set_param(drv_period_t, strParam);
+            strParam = get_param_from_header(header, "/set/pull_t/");
+            if (strParam != "")
+              set_param(drv_pull_t, strParam);
+            strParam = get_param_from_header(header, "/set/pull_f/");
+            if (strParam != "")
+              set_param(drv_pull_f, strParam);
+            strParam = get_param_from_header(header, "/set/hold_t/");
+            if (strParam != "")
+              set_param(drv_hold_t, strParam);
+            strParam = get_param_from_header(header, "/set/hold_f/");
+            if (strParam != "")
+              set_param(drv_hold_f, strParam);
+            strParam = get_param_from_header(header, "/set/rew_t/");
+            if (strParam != "")
+              set_param(drv_rew_t, strParam);
+            strParam = get_param_from_header(header, "/set/rew_f/");
+            if (strParam != "")
+              set_param(drv_rew_f, strParam);
+            strParam = get_param_from_header(header, "/set/start/");
+            if (strParam != "")
+              set_param(drv_start, strParam);
+
+            client.println("{\"params\": {");
+
+            client.print("  \"period_t\": [");
+            client.print(arr_to_str(drv_period_t));
+            client.println("],");
+            client.print("  \"pull_t\": [");
+            client.print(arr_to_str(drv_pull_t));
+            client.println("],");
+            client.print("  \"pull_f\": [");
+            client.print(arr_to_str(drv_pull_f));
+            client.println("],");
+            client.print("  \"hold_t\": [");
+            client.print(arr_to_str(drv_hold_t));
+            client.println("],");
+            client.print("  \"hold_f\": [");
+            client.print(arr_to_str(drv_hold_f));
+            client.println("],");
+            client.print("  \"rew_t\": [");
+            client.print(arr_to_str(drv_rew_t));
+            client.println("],");
+            client.print("  \"rew_f\": [");
+            client.print(arr_to_str(drv_rew_f));
+            client.println("],");
+            client.print("  \"start\": [");
+            client.print(arr_to_str(drv_start));
+            client.println("]");
+
+            client.println("}}");
+
+            control.receivedMessage(drv_period_t, drv_pull_t, drv_pull_f, drv_hold_t, drv_hold_f, drv_rew_t, drv_rew_f, drv_start);
+
+            // \n\n end of response
             client.println();
+            // exit the loop
             break;
-          } else {
+          }
+          else
+          {
             currentLine = "";
           }
-        } else if (c != '\r') {
+        }
+        else if (c != '\r')
+        {
           currentLine += c;
         }
       }
     }
 
     header = "";
+
+    // close connection
     client.stop();
     Serial.println("Client disconnected.");
     Serial.println("");
