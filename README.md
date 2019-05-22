@@ -39,3 +39,10 @@ Where [parameter] can be:
 - rew_t
 - rew_f
 - start
+
+Set parameters per pendulum:
+```
+http://[ip]/set/pendulum/[pendulum_id],[period_t],[pull_t],[pull_f],[hold_t],[hold_f],[rew_t],[rew_f],[start]
+# example
+http://[ip]/set/pendulum/0,10,20,30,40,50,60,70,1
+```
