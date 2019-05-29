@@ -82,15 +82,38 @@ String arr_to_str(int *arr)
   return res;
 }
 
-void set_param(int *arr, String param)
+void parse_params(int *arr, String param, int len)
 {
-  for (int i = 0; i < DRVNR; i++)
+  for (int i = 0; i < len; i++)
   {
     arr[i] = param.toInt();
     int idx = param.indexOf(",");
     if (idx > 0)
       param = param.substring(idx + 1);
   }
+}
+
+void set_param(int *arr, String param)
+{
+  parse_params(arr, param, DRVNR);
+}
+
+void set_pendulum_param(String param)
+{
+  // /set/pendulum/[id],[period-t],[pull-t],[pull-f],[hold-t],[hold-f],[rew-t],[rew-f],[start]
+  int params[9] = {0,0,0,0,0,0,0,0,0};
+
+  parse_params(params, param, 9);
+  int pid = params[0]; // pendulum id
+  if (pid >= DRVNR) return;
+  drv_period_t[pid] = params[1];
+  drv_pull_t[pid]   = params[2];
+  drv_pull_f[pid]   = params[3];
+  drv_hold_t[pid]   = params[4];
+  drv_hold_f[pid]   = params[5];
+  drv_rew_t[pid]    = params[6];
+  drv_rew_f[pid]    = params[7];
+  drv_start[pid]    = params[8];
 }
 
 String get_param_from_header(String hdr, String path)
@@ -160,6 +183,9 @@ void loop()
             strParam = get_param_from_header(header, "/set/start/");
             if (strParam != "")
               set_param(drv_start, strParam);
+            strParam = get_param_from_header(header, "/set/pendulum/");
+            if (strParam != "")
+              set_pendulum_param(strParam);
 
             client.println("{\"params\": {");
 
