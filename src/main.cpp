@@ -1,7 +1,8 @@
 // Load Wi-Fi library
 #include <WiFi.h>
-#include <control.cpp>
 #include <Arduino.h>
+#include <control.cpp>
+
 
 // Replace with your network credentials
 const char *ssid = "ROBERT_X250";
@@ -17,13 +18,12 @@ String header;
 String strParam;
 
 // Set your Static IP address
-IPAddress local_IP(192, 168, 137, 157);
+IPAddress local_IP(192, 168, 137, 158);
 IPAddress gateway(192, 168, 137, 1);
 IPAddress subnet(255, 255, 255, 0);
 // IPAddress local_IP(192, 168, 220, 122);
 // IPAddress gateway(192, 168, 222, 254);
 // IPAddress subnet(255, 255, 0, 0);
-
 
 // driver parameters
 const int DRVNR = 4;
@@ -44,7 +44,7 @@ void setup()
   // serial console
   Serial.begin(115200);
 
-    // Connect to Wi-Fi network with SSID and password
+  // Connect to Wi-Fi network with SSID and password
   Serial.print("Connecting to ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
@@ -55,9 +55,9 @@ void setup()
   }
 
   // set IP address
-  //if (!WiFi.config(local_IP, gateway, subnet))
+  if (!WiFi.config(local_IP, gateway, subnet))
   {
-  //  Serial.println("STA Failed to configure");
+      Serial.println("STA Failed to configure");
   }
 
   // Print local IP address and start web server
@@ -66,6 +66,8 @@ void setup()
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   server.begin();
+
+
 }
 
 String arr_to_str(int *arr)
@@ -101,19 +103,20 @@ void set_param(int *arr, String param)
 void set_pendulum_param(String param)
 {
   // /set/pendulum/[id],[period-t],[pull-t],[pull-f],[hold-t],[hold-f],[rew-t],[rew-f],[start]
-  int params[9] = {0,0,0,0,0,0,0,0,0};
+  int params[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
   parse_params(params, param, 9);
   int pid = params[0]; // pendulum id
-  if (pid >= DRVNR) return;
+  if (pid >= DRVNR)
+    return;
   drv_period_t[pid] = params[1];
-  drv_pull_t[pid]   = params[2];
-  drv_pull_f[pid]   = params[3];
-  drv_hold_t[pid]   = params[4];
-  drv_hold_f[pid]   = params[5];
-  drv_rew_t[pid]    = params[6];
-  drv_rew_f[pid]    = params[7];
-  drv_start[pid]    = params[8];
+  drv_pull_t[pid] = params[2];
+  drv_pull_f[pid] = params[3];
+  drv_hold_t[pid] = params[4];
+  drv_hold_f[pid] = params[5];
+  drv_rew_t[pid] = params[6];
+  drv_rew_f[pid] = params[7];
+  drv_start[pid] = params[8];
 }
 
 String get_param_from_header(String hdr, String path)
