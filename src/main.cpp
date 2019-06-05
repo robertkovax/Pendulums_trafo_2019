@@ -2,7 +2,7 @@
 #include <WiFi.h>
 #include <Arduino.h>
 #include <control.cpp>
-
+#include <hardware.cpp>
 
 // Replace with your network credentials
 const char *ssid = "ROBERT_X250";
@@ -25,6 +25,9 @@ IPAddress subnet(255, 255, 255, 0);
 // IPAddress gateway(192, 168, 222, 254);
 // IPAddress subnet(255, 255, 0, 0);
 
+int connection_found;
+unsigned long check_time = 500, prev_check;
+
 // driver parameters
 const int DRVNR = 4;
 int drv_period_t[DRVNR] = {0, 0, 0, 0};
@@ -37,12 +40,19 @@ int drv_rew_f[DRVNR] = {0, 0, 0, 0};
 
 int drv_start[DRVNR] = {0, 0, 0, 0};
 
+LED *LED1;
+const int led_PIN = 2;
+const int led_PWM_channel = 0;
+
 Control control = Control();
 
 void setup()
 {
   // serial console
   Serial.begin(115200);
+
+  //setup LED
+  LED1 = new LED(led_PIN, led_PWM_channel);
 
   // Connect to Wi-Fi network with SSID and password
   Serial.print("Connecting to ");
@@ -52,12 +62,14 @@ void setup()
   {
     delay(500);
     Serial.print(".");
+    LED1->driveLED(1000);
+    connection_found = 1;
   }
 
   // set IP address
   if (!WiFi.config(local_IP, gateway, subnet))
   {
-      Serial.println("STA Failed to configure");
+    Serial.println("STA Failed to configure");
   }
 
   // Print local IP address and start web server
@@ -66,8 +78,6 @@ void setup()
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
   server.begin();
-
-
 }
 
 String arr_to_str(int *arr)
@@ -137,6 +147,8 @@ void loop()
   WiFiClient client = server.available();
 
   control.tick();
+  if (connection_found == 1)
+  LED1->driveLED(millis() % 1000);
 
   if (client)
   {
@@ -244,5 +256,34 @@ void loop()
     client.stop();
     Serial.println("Client disconnected.");
     Serial.println("");
+  }
+  //check WiFi connection
+  if ((WiFi.status() == WL_DISCONNECTED) && millis() > prev_check + check_time)
+  {
+    prev_check = millis();
+    connection_found = 0;
+    Serial.println("connection lost");
+    //LED1->driveLED(1000);
+
+    // Connect to Wi-Fi network with SSID and password
+    WiFi.begin(ssid, password);
+
+    LED1->driveLED(1000);
+
+    // set IP address
+    if (!WiFi.config(local_IP, gateway, subnet))
+    {
+      Serial.println("STA Failed to configure");
+    }
+  }
+  if (WiFi.status() == WL_CONNECTED && connection_found == 0)
+  {
+    connection_found = 1;
+    // Print local IP address and start web server
+    Serial.println("");
+    Serial.println("WiFi re-connected.");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
+    server.begin();
   }
 }
