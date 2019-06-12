@@ -8,6 +8,8 @@ private:
     const int mot_Dir_PIN[4] = {22, 19, 5, 16};
     const int mot_PWM_PIN[4] = {21, 18, 17, 4};
     const int mot_PWM_channel[4] = {1, 2, 3, 4};
+
+    LED &led;
     
     int recieved_drv_period_t[4], recieved_drv_pull_t[4], recieved_drv_pull_f[4], recieved_drv_hold_t[4], recieved_drv_hold_f[4], recieved_drv_rew_t[4], recieved_drv_rew_f[4], recieved_drv_start[4];
     int current_drv_period_t[4], current_drv_pull_t[4], current_drv_pull_f[4], current_drv_hold_t[4], current_drv_hold_f[4], current_drv_rew_t[4], current_drv_rew_f[4], current_drv_start[4];
@@ -16,7 +18,7 @@ private:
     unsigned long current_time;
 
 public:
-    Control()
+    Control(LED &pLed) : led(pLed)
     {
         Motor::motorSetup(4, motors, mot_EN_PIN, mot_Dir_PIN, mot_PWM_PIN, mot_PWM_channel);
         

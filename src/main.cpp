@@ -40,19 +40,19 @@ int drv_rew_f[DRVNR] = {0, 0, 0, 0};
 
 int drv_start[DRVNR] = {0, 0, 0, 0};
 
-LED *LED1;
+//LED *LED1;
 const int led_PIN = 2;
 const int led_PWM_channel = 0;
 
-Control control = Control();
+//setup LED
+LED LED1 = LED(led_PIN, led_PWM_channel);
+
+Control control = Control(LED1);
 
 void setup()
 {
   // serial console
   Serial.begin(115200);
-
-  //setup LED
-  LED1 = new LED(led_PIN, led_PWM_channel);
 
   // Connect to Wi-Fi network with SSID and password
   Serial.print("Connecting to ");
@@ -62,7 +62,7 @@ void setup()
   {
     delay(500);
     Serial.print(".");
-    LED1->driveLED(1000);
+    LED1.driveLED(1000);
     connection_found = 1;
   }
 
@@ -148,7 +148,7 @@ void loop()
 
   control.tick();
   if (connection_found == 1)
-  LED1->driveLED(millis() % 1000);
+    LED1.driveLED(millis() % 1000);
 
   if (client)
   {
@@ -268,7 +268,7 @@ void loop()
     // Connect to Wi-Fi network with SSID and password
     WiFi.begin(ssid, password);
 
-    LED1->driveLED(1000);
+    LED1.driveLED(1000);
 
     // set IP address
     if (!WiFi.config(local_IP, gateway, subnet))
