@@ -19,7 +19,7 @@ public:
       pinMode(mot_EN_PIN[i], OUTPUT);
       pinMode(mot_Dir_PIN[i], OUTPUT);
       pinMode(mot_PWM_PIN[i], OUTPUT);
-      ledcSetup(mot_PWM_channel[i], 5000, 8);
+      ledcSetup(mot_PWM_channel[i], 32000, 8);
       ledcAttachPin(mot_PWM_PIN[i], mot_PWM_channel[i]);
       motors[i] = new Motor(mot_EN_PIN[i], mot_Dir_PIN[i], mot_PWM_PIN[i], mot_PWM_channel[i]);
     }
@@ -27,7 +27,7 @@ public:
 
   void driveMotor(int en, int force)
   {
-    if (en == 1)
+    if (en != 0)
     {
       digitalWrite(this->mot_EN_PIN, HIGH);
     }
@@ -55,7 +55,7 @@ public:
 
     //define signal LED
     pinMode(this->led_PIN, OUTPUT);
-    ledcSetup(this->led_PWM_channel, 1000, 10);
+    ledcSetup(this->led_PWM_channel, 20000, 10);
     ledcAttachPin(this->led_PIN, this->led_PWM_channel);
   };
   

@@ -1,14 +1,20 @@
 // Load Wi-Fi library
 #include <WiFi.h>
 #include <Arduino.h>
+#include <ESPmDNS.h>
 #include <control.cpp>
 #include <hardware.cpp>
+#include <ESPmDNS.h>
 
 // Replace with your network credentials
-const char *ssid = "ROBERT_X250";
-const char *password = "11221122";
+// const char *ssid = "ROBERT_X250";
+// const char *password = "11221122";
+const char* ssid     = "pendulum";
+const char* password = "cicacicacica";
 // const char* ssid     = "soda_and_code";
 // const char* password = "5GmO2vpSVau8";
+
+const char* name     = "pen-motor";
 
 // Set web server port number to 80
 WiFiServer server(80);
@@ -18,12 +24,11 @@ String header;
 String strParam;
 
 // Set your Static IP address
-IPAddress local_IP(192, 168, 137, 158);
-IPAddress gateway(192, 168, 137, 1);
+/*
+IPAddress local_IP(192, 168, 123, 100);
+IPAddress gateway(192, 168, 123, 1);
 IPAddress subnet(255, 255, 255, 0);
-// IPAddress local_IP(192, 168, 220, 122);
-// IPAddress gateway(192, 168, 222, 254);
-// IPAddress subnet(255, 255, 0, 0);
+*/
 
 int connection_found;
 unsigned long check_time = 500, prev_check;
@@ -40,19 +45,19 @@ int drv_rew_f[DRVNR] = {0, 0, 0, 0};
 
 int drv_start[DRVNR] = {0, 0, 0, 0};
 
-//LED *LED1;
+LED *LED1;
 const int led_PIN = 2;
-const int led_PWM_channel = 0;
+const int led_PWM_channel = 5;
 
-//setup LED
-LED LED1 = LED(led_PIN, led_PWM_channel);
-
-Control control = Control(LED1);
+Control control = Control();
 
 void setup()
 {
   // serial console
   Serial.begin(115200);
+
+  //setup LED
+  LED1 = new LED(led_PIN, led_PWM_channel);
 
   // Connect to Wi-Fi network with SSID and password
   Serial.print("Connecting to ");
@@ -62,21 +67,27 @@ void setup()
   {
     delay(500);
     Serial.print(".");
-    LED1.driveLED(1000);
+    LED1->driveLED(1000);
     connection_found = 1;
   }
 
   // set IP address
-  if (!WiFi.config(local_IP, gateway, subnet))
-  {
+  /*
+  if (!WiFi.config(local_IP, gateway, subnet)) {
     Serial.println("STA Failed to configure");
   }
+  */
 
   // Print local IP address and start web server
   Serial.println("");
   Serial.println("WiFi connected.");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+
+  if (!MDNS.begin(name)) {
+    Serial.println("Error setting mdns responder!");
+  }
+
   server.begin();
 }
 
@@ -103,6 +114,31 @@ void parse_params(int *arr, String param, int len)
     if (idx > 0)
       param = param.substring(idx + 1);
   }
+}
+
+void start_pendulum(String param)
+{
+  int params[2] = {0, 1};
+
+  parse_params(params, param, 2);
+  int pid = params[0];
+  int periods = params[1];
+  if (pid >= DRVNR)
+    return;
+
+  drv_start[pid] = periods;
+}
+
+void stop_pendulum(String param)
+{
+  int params[1] = {0};
+
+  parse_params(params, param, 1);
+  int pid = params[0];
+  if (pid >= DRVNR)
+    return;
+
+  drv_start[pid] = 0;
 }
 
 void set_param(int *arr, String param)
@@ -148,7 +184,7 @@ void loop()
 
   control.tick();
   if (connection_found == 1)
-    LED1.driveLED(millis() % 1000);
+  LED1->driveLED(millis() % 1000);
 
   if (client)
   {
@@ -201,6 +237,12 @@ void loop()
             strParam = get_param_from_header(header, "/set/pendulum/");
             if (strParam != "")
               set_pendulum_param(strParam);
+            strParam = get_param_from_header(header, "/start/");
+            if (strParam != "")
+              start_pendulum(strParam);
+            strParam = get_param_from_header(header, "/stop/");
+            if (strParam != "")
+              stop_pendulum(strParam);
 
             client.println("{\"params\": {");
 
@@ -268,13 +310,15 @@ void loop()
     // Connect to Wi-Fi network with SSID and password
     WiFi.begin(ssid, password);
 
-    LED1.driveLED(1000);
+    LED1->driveLED(1000);
 
     // set IP address
+    /*
     if (!WiFi.config(local_IP, gateway, subnet))
     {
       Serial.println("STA Failed to configure");
     }
+    */
   }
   if (WiFi.status() == WL_CONNECTED && connection_found == 0)
   {
